@@ -1,0 +1,15 @@
+<AML>
+ <Item type="Report" id="49D1AD9206E34E119ECB81C246420D19" action="add">
+  <label xml:lang="en">References</label>
+  <location>client</location>
+  <method keyed_name="cust_referenceses_of_method" type="Method">
+   <Item type="Method" action="get" select="id">
+    <name>cust_referenceses_of_method</name>
+   </Item>
+  </method>
+  <report_query><![CDATA[<Item type="{@type}" id="{@id}" action="get" select=""/>]]></report_query>
+  <target>one window</target>
+  <type>item</type>
+  <name>See Raferenced Method</name>
+ </Item>
+</AML>
