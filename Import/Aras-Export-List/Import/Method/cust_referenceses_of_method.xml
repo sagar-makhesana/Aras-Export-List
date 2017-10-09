@@ -25,6 +25,9 @@ aml += "        <related_id>";
 aml += "          <Item type='Workflow Map' select='name,config_id' />";
 aml += "        </related_id>";
 aml += "      </Item>";
+
+// query is incomplete - it needs the other related items added
+
 aml += "    </Relationships>";
 aml += "  </Item>";
 aml += "</AML>";
