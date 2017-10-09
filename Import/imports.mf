@@ -1,3 +1,3 @@
 <imports>
-  <package name="com.aras.innovator.solution.PLM" path="PLM\Import" />
+  <package name="sagar-makhesana.Aras-Export-List" path="Aras-Export-List\Import" />
 </imports>
