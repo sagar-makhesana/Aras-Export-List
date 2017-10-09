@@ -1,0 +1,402 @@
+﻿<AML>
+ <Item type="SQL" id="EA892CB2DE884E52A871F792AAD05B28" action="add">
+  <execution_count>24</execution_count>
+  <execution_flag>immediate</execution_flag>
+  <old_name>cust_see_methods</old_name>
+  <sqlserver_body><![CDATA[CREATE  PROCEDURE cust_see_methods (@itemid varchar(32))
+AS
+
+DECLARE @Methodused TABLE
+(MethodType char(50), MethodName varchar(300),PackageName varchar(300))
+
+----------Sign OFF forms ----------------------------------------------------
+INSERT INTO @Methodused
+select 'RELATIONSHIP SIGNOFF FORM',RF.name,pd.name
+from innovator.FORM RF
+left join innovator.packageelement pe on RF.id = pe.element_id
+left join innovator.packagegroup pg on pe.source_id = pg.id
+left join innovator.packagedefinition pd on pg.source_id = pd.id
+where RF.id in
+
+(SELECT form from innovator.RELATIONSHIP_VIEW WHERE SOURCE_ID IN 
+(SELECT id FROM innovator.RELATIONSHIPTYPE WHERE source_id = @itemid))
+
+
+------------ Relationship --------------------------------------------------------------------------------------
+
+INSERT INTO @Methodused
+select 'RELATIONSHIP TYPES',R.name,pd.name
+from innovator.RelationshipType R
+left join innovator.packageelement pe on R.id = pe.element_id
+left join innovator.packagegroup pg on pe.source_id = pg.id
+left join innovator.packagedefinition pd on pg.source_id = pd.id
+where R.id in
+(select config_id from innovator.RelationshipType where source_id = @itemid)
+
+------------ Proprties -----------------------------------------------------------------------------------------
+
+INSERT INTO @Methodused
+select 'LIST',l.name,pd.name
+from innovator.list l 
+left join innovator.packageelement pe on l.id = pe.element_id
+left join innovator.packagegroup pg on pe.source_id = pg.id
+left join innovator.packagedefinition pd on pg.source_id = pd.id
+where l.id in
+(select config_id from innovator.list where id in
+(select data_source from innovator.property where source_id = @itemid
+ and data_type in ('list','sequence')))
+ 
+------------------------------ FORM ----------------------------------------------------------------------------
+INSERT INTO @Methodused
+select 'FORM',F.name,pd.name
+from innovator.FORM F 
+left join innovator.packageelement pe on F.id = pe.element_id
+left join innovator.packagegroup pg on pe.source_id = pg.id
+left join innovator.packagedefinition pd on pg.source_id = pd.id
+where F.id in
+(select config_id from innovator.form where id in
+(select related_id from innovator.[view] where source_id = @itemid))
+
+------------------------- Workflow ------------------------------------------------------------------------------
+
+INSERT INTO @Methodused
+select 'WORKFLOW',w.name,pd.name
+from innovator.workflow_map w
+left join innovator.packageelement pe on w.id = pe.element_id
+left join innovator.packagegroup pg on pe.source_id = pg.id
+left join innovator.packagedefinition pd on pg.source_id = pd.id
+where w.id in
+(select config_id from innovator.workflow_map where id in
+(select related_id from innovator.allowed_workflow where source_id = @itemid))
+
+----------------------------- LIFE CYCLE MAP ---------------------------------------------------------------------
+
+INSERT INTO @Methodused
+select 'LIFE CYCLE',L.name,pd.name
+from innovator.life_cycle_map L
+left join innovator.packageelement pe on L.id = pe.element_id
+left join innovator.packagegroup pg on pe.source_id = pg.id
+left join innovator.packagedefinition pd on pg.source_id = pd.id
+where L.id in
+(select config_id from innovator.life_cycle_map where id in
+(select related_id from innovator.itemtype_life_cycle where source_id = @itemid))
+
+
+
+------------------------------ PERMISSIONS -----------------------------------------------------------------------
+INSERT INTO @Methodused
+select 'PERMISSION',P.name,pd.name
+from innovator.permission P
+left join innovator.packageelement pe on P.id = pe.element_id
+left join innovator.packagegroup pg on pe.source_id = pg.id
+left join innovator.packagedefinition pd on pg.source_id = pd.id
+where P.id in
+(select config_id from innovator.permission where id in
+(select related_id from innovator.allowed_permission where source_id = @itemid))
+
+
+----------------- ACTIONS ---------------------------------------------------------------------------------------
+
+INSERT INTO @Methodused
+select 'ACTIONS',A.name,pd.name
+from innovator.action A
+left join innovator.packageelement pe on A.id = pe.element_id
+left join innovator.packagegroup pg on pe.source_id = pg.id
+left join innovator.packagedefinition pd on pg.source_id = pd.id
+where A.id in
+(select config_id from innovator.action where id in
+(select related_id from innovator.item_action where source_id = @itemid))
+
+
+---------------- REPORTS ----------------------------------------------------------------------------------------
+
+INSERT INTO @Methodused
+select 'REPORTS',R.name,pd.name
+from innovator.report R
+left join innovator.packageelement pe on R.id = pe.element_id
+left join innovator.packagegroup pg on pe.source_id = pg.id
+left join innovator.packagedefinition pd on pg.source_id = pd.id
+where R.id in
+(select config_id from innovator.report where id in
+(select related_id from innovator.item_report where source_id = @itemid))
+
+-- Methods used as Events on Property  --
+ 
+/* INSERT INTO @Methodused
+select 'PROPERTY EVENTS',name from innovator.method where id in 
+(select related_id from innovator.GRID_EVENT where SOURCE_ID in
+(select ID from innovator.property where SOURCE_ID = @itemid)) */
+
+INSERT INTO @Methodused
+select 'Method on Property',m.name,pd.name
+from innovator.method m 
+left join innovator.packageelement pe on m.id = pe.element_id
+left join innovator.packagegroup pg on pe.source_id = pg.id
+left join innovator.packagedefinition pd on pg.source_id = pd.id
+where m.id in
+(select config_id from method where id in
+(select related_id from innovator.GRID_EVENT where SOURCE_ID in
+(select ID from innovator.property where SOURCE_ID = @itemid)))
+
+
+
+
+-- Methods used as Grid Events on RELATIONSHIPTYPE  --
+
+
+
+/*  INSERT INTO @Methodused
+ Select 'GRID EVENTS ON RELATIONSHIP',name FROM innovator.Method WHERE ID IN 
+ (SELECT RELATED_ID FROM innovator.RELATIONSHIP_GRID_EVENT WHERE SOURCE_ID IN 
+ (SELECT ID FROM innovator.RELATIONSHIPTYPE WHERE SOURCE_ID = @itemid)) */
+ 
+
+INSERT INTO @Methodused
+select 'Method on relationship',m.name,pd.name
+from innovator.method m 
+left join innovator.packageelement pe on m.id = pe.element_id
+left join innovator.packagegroup pg on pe.source_id = pg.id
+left join innovator.packagedefinition pd on pg.source_id = pd.id
+where m.id in
+(select config_id from method where id in
+(SELECT RELATED_ID FROM innovator.RELATIONSHIP_GRID_EVENT WHERE SOURCE_ID IN 
+(SELECT ID FROM innovator.RELATIONSHIPTYPE WHERE SOURCE_ID = @itemid)))
+ 
+ -- Methods used as Form Events --
+ 
+/*  INSERT INTO @Methodused
+ Select 'FORM EVENTS',name From innovator. Method Where id in 
+ (select related_id from innovator.FORM_EVENT where SOURCE_ID in
+ (select related_id from innovator.[view] where source_id = @itemid)) */
+ 
+INSERT INTO @Methodused
+select  'Method on form',m.name,pd.name
+from innovator.method m 
+left join innovator.packageelement pe on m.id = pe.element_id
+left join innovator.packagegroup pg on pe.source_id = pg.id
+left join innovator.packagedefinition pd on pg.source_id = pd.id
+where m.id in
+(select config_id from method where id in
+(select related_id from innovator.FORM_EVENT where SOURCE_ID in
+(select related_id from innovator.[view] where source_id = @itemid))) 
+ 
+ -- Methods used as Filed Events on Forms --
+
+/*  INSERT INTO @Methodused
+ Select 'FIELD EVENTS ON FORM ',name from innovator.Method Where id in
+ (Select related_id from innovator.FIELD_EVENT Where SOURCE_ID in
+ (Select ID from innovator. FIELD Where SOURCE_ID in
+ (Select ID from innovator. BODY Where SOURCE_ID in
+ (Select related_id from innovator.[view] where SOURCE_ID = @itemid)))) */
+ 
+INSERT INTO @Methodused
+select 'Method on Field Event',m.name,pd.name
+from innovator.method m 
+left join innovator.packageelement pe on m.id = pe.element_id
+left join innovator.packagegroup pg on pe.source_id = pg.id
+left join innovator.packagedefinition pd on pg.source_id = pd.id
+where m.id in
+(select config_id from method where id in
+ (Select related_id from innovator.FIELD_EVENT Where SOURCE_ID in
+ (Select ID from innovator. FIELD Where SOURCE_ID in
+ (Select ID from innovator. BODY Where SOURCE_ID in
+ (Select related_id from innovator.[view] where SOURCE_ID = @itemid))))) 
+ 
+ 
+ 
+ -- Methods used as Server Events --
+ 
+/*  INSERT INTO @Methodused
+ select 'SERVER EVENTS',name from innovator.method where id in 
+ (select related_id from innovator.SERVER_EVENT where SOURCE_ID =@itemid) */
+ 
+
+INSERT INTO @Methodused
+select 'Method on Server event',m.name,pd.name
+from innovator.method m 
+left join innovator.packageelement pe on m.id = pe.element_id
+left join innovator.packagegroup pg on pe.source_id = pg.id
+left join innovator.packagedefinition pd on pg.source_id = pd.id
+where m.id in
+(select config_id from method where id in
+ (select related_id from innovator.SERVER_EVENT where SOURCE_ID =@itemid))
+ 
+---Methods used as Client Events---------------
+ 
+ INSERT INTO @Methodused
+select 'Method on Client Event',m.name,pd.name
+from innovator.method m 
+left join innovator.packageelement pe on m.id = pe.element_id
+left join innovator.packagegroup pg on pe.source_id = pg.id
+left join innovator.packagedefinition pd on pg.source_id = pd.id
+where m.id in
+(select config_id from method where id in
+ (select related_id from innovator.CLIENT_EVENT where SOURCE_ID =@itemid))
+  
+  
+
+ -- Methods used ON ACTIONS --
+ 
+/*  INSERT INTO @Methodused
+ Select 'METHODS ON ACTIONS',name From innovator. Method Where id in
+(Select METHOD From innovator. ACTION Where id in
+(Select related_id From innovator.ITEM_ACTION where source_id = @itemid)) */
+
+ 
+INSERT INTO @Methodused
+select 'Method on Action',m.name,pd.name
+from innovator.method m 
+left join innovator.packageelement pe on m.id = pe.element_id
+left join innovator.packagegroup pg on pe.source_id = pg.id
+left join innovator.packagedefinition pd on pg.source_id = pd.id
+where m.id in
+(select config_id from method where id in
+(Select METHOD From innovator. ACTION Where id in
+(Select related_id From innovator.ITEM_ACTION where source_id = @itemid)))
+
+---Methods Used on Reports ---
+/* 
+INSERT INTO @Methodused
+ Select 'METHDOS ON REPORT',name From innovator. Method Where id in	
+(Select METHOD From innovator. REPORT Where id in 
+(Select related_id From innovator.ITEM_REPORT where source_id = @itemid)) */
+
+
+INSERT INTO @Methodused
+select 'Method on Report',m.name,pd.name
+from innovator.method m 
+left join innovator.packageelement pe on m.id = pe.element_id
+left join innovator.packagegroup pg on pe.source_id = pg.id
+left join innovator.packagedefinition pd on pg.source_id = pd.id
+where m.id in
+(select config_id from method where id in
+(Select METHOD From innovator. REPORT Where id in 
+(Select related_id From innovator.ITEM_REPORT where source_id = @itemid)))
+
+---Methods Used on WorkFlow Activity Server Events --
+/* 
+ INSERT INTO @Methodused
+ Select 'ACTIVITY SERVER EVENTS', name FROM innovator.Method WHERE ID IN 
+ (SELECT RELATED_ID FROM innovator.ACTIVITY_TEMPLATE_METHOD WHERE SOURCE_ID IN 
+ (SELECT RELATED_ID FROM innovator.WORKFLOW_MAP_ACTIVITY WHERE SOURCE_ID IN
+ (SELECT RELATED_ID FROM innovator.ALLOWED_WORKFLOW WHERE SOURCE_ID = @itemid))) */
+ 
+
+INSERT INTO @Methodused
+select 'Methods on WF activity',m.name,pd.name
+from innovator.method m 
+left join innovator.packageelement pe on m.id = pe.element_id
+left join innovator.packagegroup pg on pe.source_id = pg.id
+left join innovator.packagedefinition pd on pg.source_id = pd.id
+where m.id in
+(select config_id from method where id in
+(SELECT RELATED_ID FROM innovator.ACTIVITY_TEMPLATE_METHOD WHERE SOURCE_ID IN 
+ (SELECT RELATED_ID FROM innovator.WORKFLOW_MAP_ACTIVITY WHERE SOURCE_ID IN
+ (SELECT RELATED_ID FROM innovator.ALLOWED_WORKFLOW WHERE SOURCE_ID = @itemid))))
+ 
+ 
+ 
+---  'WORKFLOW PRE PATH METHODS' ----
+
+/* insert into @Methodused
+ Select 'WORKFLOW POST PATH METHODS',name From innovator.method where id in
+(SELECT related_id FROM innovator.WORKFLOW_MAP_PATH_PRE WHERE SOURCE_ID IN
+(SELECT id FROM innovator.WORKFLOW_MAP_PATH WHERE SOURCE_ID IN 
+(SELECT RELATED_ID FROM innovator.WORKFLOW_MAP_ACTIVITY WHERE SOURCE_ID IN
+(SELECT RELATED_ID FROM innovator.ALLOWED_WORKFLOW WHERE SOURCE_ID =@itemid))));
+ */
+ 
+INSERT INTO @Methodused
+select 'Methods WF PRE',m.name,pd.name
+from innovator.method m 
+left join innovator.packageelement pe on m.id = pe.element_id
+left join innovator.packagegroup pg on pe.source_id = pg.id
+left join innovator.packagedefinition pd on pg.source_id = pd.id
+where m.id in
+(select config_id from method where id in
+(SELECT related_id FROM innovator.WORKFLOW_MAP_PATH_PRE WHERE SOURCE_ID IN
+(SELECT id FROM innovator.WORKFLOW_MAP_PATH WHERE SOURCE_ID IN 
+(SELECT RELATED_ID FROM innovator.WORKFLOW_MAP_ACTIVITY WHERE SOURCE_ID IN
+(SELECT RELATED_ID FROM innovator.ALLOWED_WORKFLOW WHERE SOURCE_ID =@itemid)))))
+ 
+ 
+---  'WORKFLOW POST PATH METHODS' ----
+
+/* insert into @Methodused
+ Select 'WORKFLOW POST PATH METHODS',name From innovator.method where id in
+(SELECT related_id FROM innovator.WORKFLOW_MAP_PATH_POST WHERE SOURCE_ID IN
+(SELECT id FROM innovator.WORKFLOW_MAP_PATH WHERE SOURCE_ID IN 
+(SELECT RELATED_ID FROM innovator.WORKFLOW_MAP_ACTIVITY WHERE SOURCE_ID IN
+(SELECT RELATED_ID FROM innovator.ALLOWED_WORKFLOW WHERE SOURCE_ID =@itemid)))); */
+
+INSERT INTO @Methodused
+select 'Methods WF Post',m.name,pd.name
+from innovator.method m 
+left join innovator.packageelement pe on m.id = pe.element_id
+left join innovator.packagegroup pg on pe.source_id = pg.id
+left join innovator.packagedefinition pd on pg.source_id = pd.id
+where m.id in
+(select config_id from method where id in
+(SELECT related_id FROM innovator.WORKFLOW_MAP_PATH_POST WHERE SOURCE_ID IN
+(SELECT id FROM innovator.WORKFLOW_MAP_PATH WHERE SOURCE_ID IN 
+(SELECT RELATED_ID FROM innovator.WORKFLOW_MAP_ACTIVITY WHERE SOURCE_ID IN
+(SELECT RELATED_ID FROM innovator.ALLOWED_WORKFLOW WHERE SOURCE_ID =@itemid)))))
+ 
+
+
+---'LIFE CYCLE PRE ACTIONS'
+
+/* 
+insert into @Methodused
+SELECT 'LIFE CYCLE PRE ACTION',name FROM innovator.METHOD WHERE id in 
+(SELECT PRE_ACTION FROM innovator.LIFE_CYCLE_TRANSITION WHERE source_id IN 
+(SELECT related_id FROM innovator.ITEMTYPE_LIFE_CYCLE WHERE SOURCE_ID = @itemid)); */
+
+
+INSERT INTO @Methodused
+select 'Methods on LC',m.name,pd.name
+from innovator.method m 
+left join innovator.packageelement pe on m.id = pe.element_id
+left join innovator.packagegroup pg on pe.source_id = pg.id
+left join innovator.packagedefinition pd on pg.source_id = pd.id
+where m.id in
+(select config_id from method where id in
+(SELECT PRE_ACTION FROM innovator.LIFE_CYCLE_TRANSITION WHERE source_id IN 
+(SELECT related_id FROM innovator.ITEMTYPE_LIFE_CYCLE WHERE SOURCE_ID = @itemid)))
+
+
+
+
+
+---'LIFE CYCLE POST ACTIONS'
+
+/* insert into @Methodused
+SELECT 'LIFE CYCLE POST ACTION',name FROM innovator.METHOD WHERE id in 
+(SELECT POST_ACTION FROM innovator.LIFE_CYCLE_TRANSITION WHERE source_id IN 
+(SELECT related_id FROM innovator.ITEMTYPE_LIFE_CYCLE WHERE SOURCE_ID = @itemid)); */
+
+
+INSERT INTO @Methodused
+select 'Methods on LC TRANSITION',m.name,pd.name
+from innovator.method m 
+left join innovator.packageelement pe on m.id = pe.element_id
+left join innovator.packagegroup pg on pe.source_id = pg.id
+left join innovator.packagedefinition pd on pg.source_id = pd.id
+where m.id in
+(select config_id from method where id in
+(SELECT POST_ACTION FROM innovator.LIFE_CYCLE_TRANSITION WHERE source_id IN 
+(SELECT related_id FROM innovator.ITEMTYPE_LIFE_CYCLE WHERE SOURCE_ID = @itemid)))
+
+
+
+
+
+select * from @Methodused
+order by 1 
+]]></sqlserver_body>
+  <stale>0</stale>
+  <transform_first>0</transform_first>
+  <type>procedure</type>
+  <name>cust_see_methods</name>
+ </Item>
+</AML>
