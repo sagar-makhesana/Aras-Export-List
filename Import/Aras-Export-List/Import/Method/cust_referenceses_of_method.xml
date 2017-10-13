@@ -1,0 +1,295 @@
+﻿<AML>
+ <Item type="Method" id="E168F202D6FF414C863F6DA246179FBA" action="add">
+  <execution_allowed_to keyed_name="World" type="Identity">A73B655731924CD0B027E4F4D5FCC0A9</execution_allowed_to>
+  <method_code><![CDATA[// IMPORTANT! This method depends on a code tree overlay.
+// See Innovator/Server/App_Data/ItemAnalysis.Suppressions.sagar-makhesana.Aras-Export-List.xml
+
+var inn =top.aras.newIOMInnovator();
+var ItemId = this.getID();
+var buildHTMLStart ="";
+
+// build AML string and execute query
+var aml = buildAmlQuery(ItemId);
+var result = inn.applyAML(aml);
+
+// the aml query gets everything related to the item except lists and sequences
+// here we extract the list and sequence properties so we can retrieve the ids
+var prop_xpath = "//Item[@type='Property' and (data_type='list' or data_type='sequence')]";
+var props = result.getItemsByXPath(prop_xpath);
+
+// build AML string and retrieve the lists and sequences based on properties
+var seq_list_aml;
+seq_list_aml = "<AML>";
+
+for (var i=0; i < props.getItemCount(); i++)
+{
+    var prop = props.getItemByIndex(i);
+    if (prop.getProperty("data_type","") === "list")
+    {
+        seq_list_aml += "<Item type='List' action='get' select='id,keyed_name' id='";
+        seq_list_aml += prop.getProperty("data_source","");
+        seq_list_aml += "' />";
+    }
+    if (prop.getProperty("data_type","") === "sequence")
+    {
+        seq_list_aml += "<Item type='Sequence' action='get' select='id,keyed_name' id='";
+        seq_list_aml += prop.getProperty("data_source","");
+        seq_list_aml += "' />";
+    }
+}
+
+seq_list_aml += "</AML>";
+var seqListResult = inn.applyAML(seq_list_aml);
+
+// extract the important items from the original query and list/sequence results
+// these are the items that should be packaged
+var xpath = "//Item[";
+xpath += "@type='Action' or ";
+xpath += "@type='RelationshipType' or ";
+xpath += "@type='Form' or ";
+xpath += "@type='Method' or ";
+xpath += "@type='List' or ";
+xpath += "@type='Sequence' or ";
+xpath += "@type='Workflow Map' or ";
+xpath += "@type='Life Cycle Map' or ";
+xpath += "@type='Permission' or ";
+xpath += "@type='Report']";
+
+var relatedItems = result.getItemsByXPath(xpath); 
+var relatedSeqLists = seqListResult.getItemsByXPath(xpath);
+
+// get package elements for the related items we extracted
+// first we build an id list, then execute AML query
+var first = relatedItems.getItemByIndex(0);
+var idlist = "'" + first.getProperty("config_id",first.getID()) + "'"; 
+
+for (var i = 1; i < relatedItems.getItemCount(); i++) { 
+    var itm = relatedItems.getItemByIndex(i);
+    idlist += ",'" + itm.getProperty("config_id",itm.getID()) + "'";
+} 
+
+for (var i = 0; i < relatedSeqLists.getItemCount(); i++) { 
+    var itm = relatedSeqLists.getItemByIndex(i);
+    idlist += ",'" + itm.getProperty("config_id",itm.getID()) + "'";
+} 
+
+// IMPORTANT! Using a select in an AML where clause in 11 SP9+ requires a special 
+// security configuration in the code tree. 
+// See Innovator/Server/App_Data/ItemAnalysis.Suppressions.sagar-makhesana.Aras-Export-List.xml
+aml = "<AML>";
+aml += "<Item type=\"PackageElement\" action=\"get\" select=\"source_id(source_id),element_id\" ";
+aml += "where=\"[PackageElement].id in (select id FROM innovator.[PackageElement] where element_id in ("+idlist+"))\" />";
+aml += "</AML>"; 
+
+var packageElements = inn.applyAML(aml); 
+ 
+// build HTML result string
+if (relatedItems.getItemCount() > 0)  
+ 
+{ 
+    buildHTMLStart += "<html>"; 
+    buildHTMLStart += "<head>"; 
+    buildHTMLStart += "</head>"; 
+    buildHTMLStart += "<body>"; 
+    buildHTMLStart += "<h1>Referenced Items for '" + result.getProperty("keyed_name", "") + "' ItemType</h1>"; 
+    buildHTMLStart += "<table border= '1px solid black' width = '100%'>"; 
+    buildHTMLStart += "<tr>"; 
+    buildHTMLStart += "<th align='center'>Object Type</th>"; 
+    buildHTMLStart += "<th align='center'>Object Name</th> "; 
+    buildHTMLStart += "<th align='center'>Package Name</th> "; 
+    buildHTMLStart += "</tr>"; 
+		
+	// process Actions, RelationshipTypes, Forms, Methods, Workflows, Life Cycles, 
+	// Permissions, Reports
+	for (var i = 0; i < relatedItems.getItemCount(); i++)  
+    { 
+        
+        var r = relatedItems.getItemByIndex(i); 
+        var p = packageElements.getItemsByXPath("//Item[element_id='"+r.getID()+"']/source_id/Item");
+        var packageDetail = ""; 
+        
+        if (p.isCollection() && p.getItemCount() === 0)
+        {
+            packageDetail = "";
+        }
+        else
+        {
+            packageDetail = p.getPropertyAttribute("source_id","keyed_name","");
+        }
+   
+        var obj = r.getType(); 
+        var obj1 = r.getProperty("name", r.getProperty("keyed_name", "")); 
+ 
+        buildHTMLStart += "<tr>"; 
+        buildHTMLStart += "<td>" + obj + "</td>"; 
+        buildHTMLStart += "<td>" + obj1 + "</td>"; 
+        buildHTMLStart += "<td>"+ packageDetail +"</td>"; 
+        buildHTMLStart += "</tr>"; 
+        
+    } 
+ 
+    // process Lists, Sequences
+    for (var i = 0; i < relatedSeqLists.getItemCount(); i++)  
+    { 
+        var r = relatedSeqLists.getItemByIndex(i); 
+        var p = packageElements.getItemsByXPath("//Item[element_id='"+r.getID()+"']/source_id/Item");
+        var packageDetail = ""; 
+        
+        if (p.isCollection() && p.getItemCount() === 0)
+        {
+            packageDetail = "";
+        }
+        else
+        {
+            packageDetail = p.getPropertyAttribute("source_id","keyed_name","");
+        }
+
+        var obj = r.getType(); 
+        var obj1 = r.getProperty("name", r.getProperty("keyed_name", "")); 
+        
+        buildHTMLStart += "<tr>"; 
+        buildHTMLStart += "<td>" + obj + "</td>"; 
+        buildHTMLStart += "<td>" + obj1 + "</td>"; 
+        buildHTMLStart += "<td>"+ packageDetail +"</td>"; 
+        buildHTMLStart += "</tr>"; 
+    }
+ 
+    buildHTMLStart += "</table>"; 
+    buildHTMLStart += "</body>"; 
+    buildHTMLStart += "</html>"; 
+}
+
+// return final HTML string
+return buildHTMLStart;
+
+/******** END *****************************************************************/
+ 
+ // I put the AML string in a function at the end of the method so it's out of 
+ // the way and we don't have to scroll through it every time we want to see 
+ // the method's content
+ function buildAmlQuery(item_id)
+ {
+    var aml = ""; 
+    aml += "<AML>";
+    // CONTEXT ITEMTYPE
+    aml += "  <Item type=\"ItemType\" action=\"get\" select=\"id,keyed_name\" id=\"" + item_id + "\">";
+    aml += "    <Relationships>";
+    // RELATIONSHIP TYPES 
+    aml += "      <Item type=\"RelationshipType\" action=\"get\" select=\"id,keyed_name\">";
+    aml += "        <Relationships>";
+    // RELATIONSHIP SIGNOFF FORM
+    aml += "          <Item type=\"Relationship View\" action=\"get\" select=\"form(id,keyed_name)\" />";
+    // METHODS ON RELATIONSHIP TYPE
+    aml += "          <Item type=\"Relationship Grid Event\" action=\"get\" select=\"related_id(id,config_id,keyed_name)\" />";
+    aml += "        </Relationships>";
+    aml += "      </Item>";
+    // FORMS 
+    aml += "      <Item type=\"View\" action=\"get\" select=\"related_id\">";
+    aml += "        <related_id>";
+    aml += "          <Item type=\"Form\" action=\"get\" select=\"id,keyed_name\">";
+    aml += "            <Relationships>";
+    // FORM EVENT METHODS
+    aml += "              <Item type=\"Form Event\" action=\"get\" select=\"related_id(id,config_id,keyed_name)\" />";
+    aml += "              <Item type=\"Body\" action=\"get\" select=\"id\">";
+    aml += "                <Relationships>";
+    aml += "                  <Item type=\"Field\" action=\"get\" select=\"id\">";
+    aml += "                    <Relationships>";
+    // FIELD EVENT METHODS
+    aml += "                      <Item type=\"Field Event\" action=\"get\" select=\"related_id(id,config_id,keyed_name)\" />";
+    aml += "                    </Relationships>";
+    aml += "                  </Item>";
+    aml += "                </Relationships>";
+    aml += "              </Item>";
+    aml += "            </Relationships>";
+    aml += "          </Item>";
+    aml += "        </related_id>";
+    aml += "      </Item>";
+    // LIST / SEQUENCE - INCOMPLETE
+    aml += "      <Item type=\"Property\" action=\"get\" select=\"id,keyed_name,data_type,data_source(id,keyed_name)\">";
+    aml += "        <OR>";
+    aml += "          <data_type>List</data_type>";
+    aml += "          <data_type>Sequence</data_type>";
+    aml += "        </OR>";
+    aml += "        <Relationships>";
+    // METHODS ON PROPERTIES
+    aml += "          <Item type=\"Grid Event\" action=\"get\" select=\"related_id(id,config_id,keyed_name)\" />";
+    aml += "        </Relationships>";
+    aml += "      </Item>";
+    // WORKFLOWS
+    aml += "      <Item type=\"Allowed Workflow\" action=\"get\" select=\"related_id\">";
+    aml += "        <related_id>";
+    aml += "          <Item type=\"Workflow Map\" action=\"get\" select=\"id,keyed_name\">";
+    aml += "            <Relationships>";
+    aml += "              <Item type=\"Workflow Map Activity\" action=\"get\" select=\"related_id\">";
+    aml += "                <related_id>";
+    aml += "                  <Item type=\"Activity Template\" action=\"get\" select=\"id\">";
+    aml += "                    <Relationships>";
+    // WORKFLOW ACTIVITY SERVER EVENT METHODS
+    aml += "                      <Item type=\"Activity Template Method\" action=\"get\" select=\"related_id(id,config_id,keyed_name)\" />";
+    aml += "                      <Item type=\"Workflow Map Path\" action=\"get\" select=\"id\">";
+    aml += "                        <Relationships>";
+    // WORKFLOW PATH PRE METHODS
+    aml += "                          <Item type=\"Workflow Map Path Pre\" action=\"get\" select=\"related_id(id,config_id,keyed_name)\" />";
+    // WORKFLOW PATH POST METHODS
+    aml += "                          <Item type=\"Workflow Map Path Post\" action=\"get\" select=\"related_id(id,config_id,keyed_name)\" />";
+    aml += "                        </Relationships>";
+    aml += "                      </Item>";
+    aml += "                    </Relationships>";
+    aml += "                  </Item>";
+    aml += "                </related_id>";
+    aml += "              </Item>";
+    aml += "            </Relationships>";
+    aml += "          </Item>";
+    aml += "        </related_id>";
+    aml += "      </Item>";
+    // LIFE CYCLES
+    aml += "      <Item type=\"Itemtype Life Cycle\" action=\"get\" select=\"related_id\">";
+    aml += "        <related_id>";
+    aml += "          <Item type=\"Life Cycle Map\" action=\"get\" select=\"id,keyed_name\">";
+    aml += "            <Relationships>";
+    // LIFE CYCLE PRE METHODS
+    aml += "              <Item type=\"Life Cycle Transition\" action=\"get\" select=\"pre_action(id,config_id,keyed_name)\" />";
+    // LIFE CYCLE POST METHODS
+    aml += "              <Item type=\"Life Cycle Transition\" action=\"get\" select=\"post_action(id,config_id,keyed_name)\" />";
+    aml += "            </Relationships>";
+    aml += "          </Item>";
+    aml += "        </related_id>";
+    aml += "      </Item>";
+    // PERMISSIONS
+    aml += "      <Item type=\"Allowed Permission\" action=\"get\" select=\"related_id(id,keyed_name)\" />";
+    // ACTIONS
+    aml += "      <Item type=\"Item Action\" action=\"get\" select=\"related_id\">";
+    aml += "        <related_id>";
+    aml += "          <Item type=\"Action\" action=\"get\" select=\"id,keyed_name,method\">";
+    aml += "            <method>";
+    // METHODS USED ON ACTIONS
+    aml += "              <Item type=\"Method\" action=\"get\" select=\"id,config_id,keyed_name\" />";
+    aml += "            </method>";
+    aml += "          </Item>";
+    aml += "        </related_id>";
+    aml += "      </Item>";
+    // REPORTS
+    aml += "      <Item type=\"Item Report\" action=\"get\" select=\"related_id(id,keyed_name)\">";
+    aml += "        <related_id>";
+    aml += "          <Item type=\"Report\" action=\"get\" select=\"id,keyed_name,method\">";
+    aml += "            <method>";
+    // METHODS USED ON REPORTS
+    aml += "              <Item type=\"Method\" action=\"get\" select=\"id,config_id,keyed_name\" />";
+    aml += "            </method>";
+    aml += "          </Item>";
+    aml += "        </related_id>";
+    aml += "      </Item>";
+    // SERVER EVENT METHODS
+    aml += "      <Item type=\"Server Event\" action=\"get\" select=\"related_id(id,keyed_name)\" />";
+    // CLIENT EVENT METHODS
+    aml += "      <Item type=\"Client Event\" action=\"get\" select=\"related_id(id,keyed_name)\" />";
+    aml += "    </Relationships>";
+    aml += "  </Item>";
+    aml += "</AML>";
+    
+    return aml;
+ }]]></method_code>
+  <method_type>JavaScript</method_type>
+  <name>cust_referenceses_of_method</name>
+ </Item>
+</AML>
