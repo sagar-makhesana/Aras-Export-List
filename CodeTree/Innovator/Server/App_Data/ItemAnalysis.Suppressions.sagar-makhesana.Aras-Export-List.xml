@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Suppression file example -->
+<!--
+	To add a custom suppression create an XML file with name matching 
+		ItemAnalysis.Suppressions.*.xml
+	template in App_Code folder. E.g. "ItemAnalysis.Suppressions.MyCustom.xml".
+	See file example below to understand its format.
+	NOTEs:
+	1. The file supports @Parameter and @ParametersList keywords indicating an SQL constant and SQL constants list respectively.
+	2. IIS restart is a must to apply the changes of new/existing suppression files.
+-->
+<itemAnalysis>
+	<suppressions>
+		<whereAttribute>
+			<!-- Add a suppression for Item "where" attribute. NOTE: it uses both @Parameter and @ParametersList -->
+			<template><![CDATA[[PackageElement].id in (select id FROM innovator.[PackageElement] where element_id in (@ParametersList))]]></template>
+		</whereAttribute>
+		<conditionInProperty>
+			<!-- Add a suppression for Item condition="in", condition="not in" property value -->
+			<template><![CDATA[SELECT id FROM [example_of_custom_item_type].column_with_ids]]></template>
+		</conditionInProperty>
+		<conditionBetweenProperty>
+			<!-- Add a suppression for Item condition="between", condition="not between" property value -->
+			<template><![CDATA[(SELECT TOP 1 created_on FROM [example_of_custom_item_type] ORDER BY created_on DESC)
+								AND (SELECT TOP 1 created_on FROM [example_of_custom_item_type] ORDER BY created_on ASC)]]></template>
+		</conditionBetweenProperty>
+	</suppressions>
+</itemAnalysis>
