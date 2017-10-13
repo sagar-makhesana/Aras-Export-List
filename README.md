@@ -39,6 +39,8 @@ It passes the Item id to a method which queries the ItemType's related items and
 
 ## How it works
 
+![Reference Report](./Screenshots/report.png)
+
 1. Login to ARAS innovator.
 2. Search the Item type from TOC panel.
 3. Right Click on Item and click on the Reference report.
